@@ -37,8 +37,6 @@ Hier findest du eine Übersicht aller 5 Automatisierungen, die ich entwickelt ha
 
 ---
 
----
-
 ## 🚀 Wie man die Workflows nutzt
 
 1. Navigiere in den Ordner des gewünschten Projekts.
