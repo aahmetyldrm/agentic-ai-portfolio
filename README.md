@@ -37,16 +37,6 @@ Hier findest du eine Übersicht aller 5 Automatisierungen, die ich entwickelt ha
 
 ---
 
-## 🏗️ Technischer Stack
-
-Dieses Portfolio demonstriert den sicheren Umgang mit modernen Automatisierungs- und KI-Infrastrukturen:
-* **Workflow-Orchestrierung:** n8n (Advanced Loops, Switches, Binary Data Handling, Hooks)
-* **Künstliche Intelligenz:** Google Gemini (Advanced Prompting, Structured JSON Output, AI Agents)
-* **Data Scrape & Parsing:** Firecrawl API, JavaScript / Node.js (Buffer & JSON handling)
-* **Datenhaltung & CRM:** Google Sheets API
-* **Kommunikations-Kanäle:** Gmail API, Discord Webhooks
-* **Frontend-Technologien:** HTML5, Tailwind CSS, Chart.js
-
 ---
 
 ## 🚀 Wie man die Workflows nutzt
