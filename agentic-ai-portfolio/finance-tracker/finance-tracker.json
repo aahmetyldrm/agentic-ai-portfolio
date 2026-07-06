@@ -1,0 +1,233 @@
+{
+  "name": "Finance Tracker",
+  "nodes": [
+    {
+      "parameters": {
+        "modelName": "models/gemini-flash-latest",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        704,
+        208
+      ],
+      "id": "de44e871-2d24-41f6-99e3-eed43741afbb",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "KxW8ej7fWaquzBjB",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "months",
+              "triggerAtHour": 10
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        240,
+        0
+      ],
+      "id": "a1ce6863-e596-4779-94ab-1cc720fc7318",
+      "name": "Monatlicher Trigger"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1Uw_zcACwTsXhvgSzZlgeEoII5W_AYY8AcRlY42c0ly4",
+          "mode": "list",
+          "cachedResultName": "Ausgaben",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Uw_zcACwTsXhvgSzZlgeEoII5W_AYY8AcRlY42c0ly4/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Tabellenblatt1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Uw_zcACwTsXhvgSzZlgeEoII5W_AYY8AcRlY42c0ly4/edit#gid=0"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        416,
+        0
+      ],
+      "id": "3d543f10-2244-44ac-b855-b40236d06179",
+      "name": "Google Sheet auslesen",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "Tsfnu2TfltAZAw5u",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Dieser Code sammelt alle einzelnen Zeilen aus Google Sheets \n// und baut daraus eine saubere JSON-Liste für die KI.\n\nlet ausgabenListe = [];\nlet gesamtKosten = 0;\n\n// Wir gehen durch jede einzelne Zeile aus Google Sheets durch\nfor (const item of $input.all()) {\n  // Pass hier eventuell die Namen (z.B. item.json.Name) an deine Tabellenspalten an!\n  let name = item.json.Name || \"Unbekannt\";\n  let betrag = parseFloat(item.json.Betrag) || 0;\n  let kategorie = item.json.Kategorie || \"Sonstiges\";\n  let intervall = item.json.Intervall || \"monatlich\";\n\n  ausgabenListe.push({\n    name: name,\n    betrag: betrag,\n    kategorie: kategorie,\n    intervall: intervall\n  });\n\n  gesamtKosten += betrag;\n}\n\n// Wir geben ein einziges neues Objekt zurück, das die Liste und die Summe enthält\nreturn [{\n  json: {\n    gesamtKosten: gesamtKosten.toFixed(2),\n    anzahlAusgaben: ausgabenListe.length,\n    ausgabenListe: ausgabenListe\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        624,
+        0
+      ],
+      "id": "fb239863-cd09-43a4-ad27-60fa7c9eb5e2",
+      "name": "Daten für KI vorbereiten"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Analysiere bitte folgende Ausgaben: {{ $json.ausgabenListe }} {{ $json.gesamtKosten }}",
+        "options": {
+          "systemMessage": "Du bist ein erstklassiger, smarter Finanzberater und Datenanalyst. \nDeine Aufgabe ist es, die monatlichen Ausgaben und Abos des Nutzers zu analysieren.\n\nVerhalte dich so:\n1. Analysiere das gesamte Sparpotenzial (z. B. ungenutzte Abos, zu hohe Fixkosten).\n2. Gib dem Nutzer exakt 3 konkrete, prägnante, direkt umsetzbare Kauftipps oder Spar-Warnungen.\n3. Formuliere deine Antwort kurz, professionell, aber motivierend und locker.\n4. Nutze für die Ausgabe sauberes Markdown (z.B. Aufzählungszeichen für die 3 Tipps), aber KEINE HTML-Tags im Text selbst.\n\nKonzentriere dich auf das Wesentliche, da deine Analyse direkt auf einem Dashboard angezeigt wird."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        832,
+        0
+      ],
+      "id": "82b3d2dc-6905-46bb-8e74-463350538926",
+      "name": "KI-Finanzexperte"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 1. Helfer-Funktion zur Umwandlung von Markdown in sauberes HTML\nfunction formatMarkdown(text) {\n    if (!text) return '';\n    return text\n        // Ersetzt fettgedruckten Text (**text**) durch ein schickes, grünes HTML-Strong\n        .replace(/\\*\\*(.*?)\\*\\*/g, '<strong class=\"text-emerald-400 font-bold\">$1</strong>')\n        // Ersetzt einfache Sternchen (* text) am Zeilenanfang durch einen sauberen Listenpunkt\n        .replace(/^\\s*\\*\\s*(.*?)$/gm, '• $1')\n        // Ersetzt verbleibende einzelne Sternchen (*text*) durch kursiven Text\n        .replace(/\\*(.*?)\\*/g, '<em>$1</em>');\n}\n\n// 2. Hier holen wir dynamisch den Text aus deinem AI Agent Schritt\nconst roherKiText = $input.first().json.output || \"Keine Analyse verfügbar.\";\nconst gesamtSumme = \"2.088,56 €\"; \n\n// 3. Den Text durch die Formatierungs-Funktion jagen\nconst saubererKiText = formatMarkdown(roherKiText);\n\n// 4. Das HTML-Template mit dem formatierten Text befüllen\nconst htmlContent = `\n<!DOCTYPE html>\n<html lang=\"de\">\n<head>\n    <meta charset=\"UTF-8\">\n    <script src=\"https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4\"></script>\n    <script src=\"https://cdn.jsdelivr.net/npm/chart.js\"></script>\n</head>\n<body class=\"bg-slate-900 text-slate-100 p-6\">\n    <div class=\"max-w-5xl mx-auto space-y-8\">\n        <h1 class=\"text-3xl font-bold text-emerald-400\">Finanz- & Abo-Cockpit</h1>\n        <div class=\"grid grid-cols-1 md:grid-cols-3 gap-6\">\n            <div class=\"bg-slate-800 p-6 rounded-2xl\">\n                <h2 class=\"text-slate-300\">Gesamtausgaben</h2>\n                <p class=\"text-3xl font-bold text-emerald-400\">${gesamtSumme}</p>\n            </div>\n            <div class=\"md:col-span-2 bg-slate-800 p-6 rounded-2xl\">\n                <h2 class=\"text-lg font-semibold mb-4\">🤖 KI-Analyse</h2>\n                <!-- whitespace-pre-line behält die Absätze bei, während das HTML gerendert wird -->\n                <div class=\"text-slate-300 whitespace-pre-line leading-relaxed\">${saubererKiText}</div>\n            </div>\n        </div>\n    </div>\n</body>\n</html>\n`;\n\n// 5. Direkt als fertige Binärdatei (\"binary\") an Gmail übergeben\nreturn [{\n    json: {}, \n    binary: {\n        data: {\n            data: Buffer.from(htmlContent, 'utf-8').toString('base64'),\n            mimeType: 'text/html',\n            fileName: 'dashboard.html'\n        }\n    }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1200,
+        0
+      ],
+      "id": "6d002ad4-bb8d-43a9-9354-656b9c906dc5",
+      "name": "HTML-Dashboard bauen"
+    },
+    {
+      "parameters": {
+        "sendTo": "a.yildirim0450@gmail.com",
+        "subject": "Monatsbericht über deine Ausgaben",
+        "message": "=<div style=\"font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px; background-color: #f8fafc;\">\n    <h2 style=\"color: #10b981; margin-top: 0;\">📊 Dein KI-Finanzreport ist da!</h2>\n    <p style=\"color: #334155; font-size: 15px; line-height: 1.6;\">\n        Hallo!<br><br>\n        Dein automatisierter Workflow war erfolgreich. Die KI hat deine Ausgaben analysiert und ein brandneues, interaktives Dashboard für dich generiert.\n    </p>\n    \n    <div style=\"background-color: #ffffff; border-left: 4px solid #10b981; padding: 15px; margin: 20px 0; border-radius: 4px;\">\n        <p style=\"margin: 0; color: #1e293b; font-weight: bold; font-size: 14px;\">💡 So öffnest du dein Dashboard:</p>\n        <p style=\"margin: 5px 0 0 0; color: #64748b; font-size: 14px;\">\n            Öffne einfach die angehängte Datei <strong>\"dashboard.html\"</strong> direkt aus dieser E-Mail heraus. Sie lädt sich sofort in deinem Webbrowser – mit allen interaktiven Diagrammen und Analysen!\n        </p>\n    </div>\n\n    <p style=\"color: #94a3b8; font-size: 12px; margin-bottom: 0; border-top: 1px solid #e2e8f0; padding-top: 12px;\">\n        Generiert durch deinen n8n-KI-Agenten.\n    </p>\n</div>",
+        "options": {
+          "attachmentsUi": {
+            "attachmentsBinary": [
+              {}
+            ]
+          }
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1456,
+        0
+      ],
+      "id": "804a35dc-fe35-4b69-8f8d-f66813678378",
+      "name": "Dashboard per Mail senden",
+      "webhookId": "afa4ab0a-6201-4fb7-bb87-e992e6157181",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "QNIAY6JdmiqIfS5A",
+          "name": "Gmail account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "KI-Finanzexperte",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Monatlicher Trigger": {
+      "main": [
+        [
+          {
+            "node": "Google Sheet auslesen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Sheet auslesen": {
+      "main": [
+        [
+          {
+            "node": "Daten für KI vorbereiten",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Daten für KI vorbereiten": {
+      "main": [
+        [
+          {
+            "node": "KI-Finanzexperte",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "KI-Finanzexperte": {
+      "main": [
+        [
+          {
+            "node": "HTML-Dashboard bauen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTML-Dashboard bauen": {
+      "main": [
+        [
+          {
+            "node": "Dashboard per Mail senden",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "fa017409-eb4a-4402-b4df-204487fe8205",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "0b00f10780335677c21ea272cc8dcbd2fb34129cfb68c66d8f9681f47d3a2f4a"
+  },
+  "nodeGroups": [],
+  "id": "WyCpZx6JBsMFUTLA",
+  "tags": []
+}

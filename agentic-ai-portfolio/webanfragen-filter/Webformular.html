@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>IT-Consulting Lead Testformular</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 500px; margin: 50px auto; padding: 20px; border: 1px solid #ccc; border-radius: 8px; }
+        label { display: block; margin-top: 10px; font-weight: bold; }
+        textarea, input { width: 100%; padding: 8px; margin-top: 5px; box-sizing: border-box; }
+        button { margin-top: 15px; padding: 10px 15px; background-color: #007BFF; color: white; border: none; border-radius: 4px; cursor: pointer; width: 100%; }
+        button:hover { background-color: #0056b3; }
+    </style>
+</head>
+<body>
+    <h2>Projektanfrage einreichen</h2>
+    <form id="leadForm">
+        <label for="text">Beschreiben Sie Ihr Vorhaben (inkl. Firma & Budget):</label>
+        <textarea id="text" rows="5" placeholder="z. B. Hallo, ich bin Herr Müller von Bosch. Wir suchen eine KI-Lösung. Budget: 45.000 EUR..." required></textarea>
+        
+        <button type="submit">Anfrage absenden</button>
+    </form>
+
+    <script>
+        document.getElementById('leadForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const textValue = document.getElementById('text').value;
+
+            
+            const n8nWebhookUrl = 'http://localhost:5678/webhook-test/3450af72-baf7-43b2-897e-adb372a2b778'; 
+
+            try {
+                const response = await fetch(n8nWebhookUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ anfrage_text: textValue })
+                });
+                if (response.ok) { alert('Anfrage erfolgreich an n8n übermittelt!'); }
+                else { alert('Fehler bei der Übermittlung.'); }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Verbindung zu n8n fehlgeschlagen. Läuft n8n?');
+            }
+        });
+    </script>
+</body>
+</html>

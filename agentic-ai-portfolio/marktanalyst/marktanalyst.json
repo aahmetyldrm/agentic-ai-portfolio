@@ -1,0 +1,476 @@
+{
+  "name": "Marktanalyst",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "triggerAtDay": [
+                1
+              ],
+              "triggerAtHour": 6
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        0
+      ],
+      "id": "3486f78b-7279-4431-b806-391cb9f22238",
+      "name": "Wöchentlicher Trigger"
+    },
+    {
+      "parameters": {
+        "jsCode": "return [\n  {\n    json: {\n      company_name: \"Apple\",\n      news_url: \"https://rss.nytimes.com/services/xml/rss/nyt/Technology.xml\"\n    }\n  },\n  {\n    json: {\n      company_name: \"Google\",\n      news_url: \"https://www.theverge.com/rss/index.xml\"\n    }\n  },\n  {\n    json: {\n      company_name: \"Microsoft\",\n      news_url: \"https://www.zdnet.com/news/rss.xml\"\n    }\n  },\n  {\n    json: {\n      company_name: \"TestCorp-Alarm\",\n      // Wir geben dem HTTP-Request eine echte URL, damit er nicht abstürzt,\n      // aber Gemini wird durch unseren Prompt hier den Alarm auslösen!\n      news_url: \"https://www.theverge.com/rss/index.xml\" \n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        208,
+        0
+      ],
+      "id": "9c06ae56-2766-49eb-a4d1-00d7c5af0de2",
+      "name": "RSS-Quellen definieren"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        416,
+        -48
+      ],
+      "id": "4a1484e2-dd2f-4c20-a82a-69e222d3d288",
+      "name": "Konkurrenz-Schleife"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.news_url }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        464,
+        208
+      ],
+      "id": "d2ad62b4-b66b-49d5-a3f1-babcdaeffded",
+      "name": "Website-Inhalt laden"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-flash-lite-latest",
+          "mode": "list",
+          "cachedResultName": "models/gemini-flash-lite-latest"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=Du bist ein hochpräziser KI-Marktanalyst für Konkurrenzbeobachtung. Deine Aufgabe ist es, den bereitgestellten Text der Konkurrenz-Webseite auf Deutsch zu analysieren und strategische Erkenntnisse (\"insights\") zu extrahieren.\n\nHier ist der Text der Webseite, den du analysieren musst:\n{{ $json.data }}\n\n### ANWEISUNGEN FÜR DIE BEWERTUNG:\nAnalysiere die Neuerungen im Text und ordne jedem erkannten Punkt eine \"dringlichkeit\" als reine ZAHL (1, 2 oder 3) zu. Sei dabei realistisch und wähle die Stufen nach folgenden Kriterien:\n\n1 = Reine Information / Keine unmittelbare strategische Relevanz (z.B. normale Blogposts, Design-Anpassungen, Standard-Feiertagsgrüße).\n2 = Wichtige Neuerung (Produkt-Updates, neue nützliche Features, kleinere Preisanpassungen), die wir aktiv beobachten müssen.\n3 = Kritische Bedrohung / Aggressive Marktveränderung (z.B. massive Preissenkungen, bahnbrechende neue KI-Releases der Konkurrenz, Übernahmen, Insolvenzen/Krisen, Gewinnung unserer Kernkunden).\n\n### STRIKTE AUSGABE-REGELN:\n- Antworte AUSNAHMSLOS im folgenden JSON-Format.\n- Füge KEINEN Text (wie \"Hier ist dein JSON:\") vor oder nach dem JSON hinzu.\n- Das Feld \"dringlichkeit\" darf NUR die Zahlen 1, 2 oder 3 enthalten (keinen Text, keine Emojis im Zahlenfeld!).\n\n### JSON-FORMAT (EXAKT SO AUSGEBEN):\n{\n  \"firma\": \"Name der analysierten Firma\",\n  \"insights\": [\n    {\n      \"titel\": \"Prägnanter Titel der Erkenntnis\",\n      \"beschreibung\": \"Ausführliche Erklärung, warum das wichtig ist und was sich für uns ändert.\",\n      \"dringlichkeit\": 1\n    }\n  ]\n}"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.2,
+      "position": [
+        544,
+        400
+      ],
+      "id": "b1ad2bf7-20e9-4673-a9a6-582fde5a256a",
+      "name": "KI-Marktanalyst",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "KxW8ej7fWaquzBjB",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.content.parts[0].text }}",
+                    "rightValue": "\"dringlichkeit\": 3",
+                    "operator": {
+                      "type": "string",
+                      "operation": "contains"
+                    },
+                    "id": "bf285920-41eb-4198-9c58-c79a500a0c04"
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        896,
+        400
+      ],
+      "id": "8efdadd0-628d-44cb-9a34-52e60f404277",
+      "name": "Bedrohungs-Check (Stufe 1-3)"
+    },
+    {
+      "parameters": {
+        "jsCode": "// SCHUTZSCHILD: Prüfen, ob Gemini überhaupt Daten geliefert hat\nif (!$input.item.json.content || !$input.item.json.content.parts) {\n  return [{ json: { formattedAlarm: \"⚠️ Gemini hat für diese Firma keine Daten geliefert (Inhalt leer).\" } }];\n}\n\nlet rawText = $input.item.json.content.parts[0].text;\n\nif (rawText.includes(\"```json\")) {\n  rawText = rawText.split(\"```json\")[1].split(\"```\")[0].trim();\n} else if (rawText.includes(\"```\")) {\n  rawText = rawText.split(\"```\")[1].split(\"```\")[0].trim();\n}\n\nlet alarmReport = \"🚨 **EILMELDUNG: KRITISCHE MARKTVERÄNDERUNG ERKANNT!** 🚨\\n\";\nalarmReport += \"=========================================\\n\\n\";\n\ntry {\n  const data = JSON.parse(rawText);\n  alarmReport += `🏢 **FIRMA: ${data.firma.toUpperCase()}**\\n`;\n  alarmReport += \"-----------------------------------------\\n\";\n  \n  for (const insight of data.insights) {\n    alarmReport += `🔥 **${insight.titel}** (PRIORITÄT 3)\\n`;\n    alarmReport += `💡 ${insight.beschreibung}\\n\\n`;\n  }\n} catch (e) {\n  alarmReport += `⚠️ Parsing-Fehler. Roh-Analyse:\\n\\n${rawText}`;\n}\n\nreturn [{ json: { formattedAlarm: alarmReport } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1104,
+        304
+      ],
+      "id": "978d0937-4d92-4609-b909-a33f352da757",
+      "name": "Alarm-Text formatieren",
+      "retryOnFail": false,
+      "maxTries": 3
+    },
+    {
+      "parameters": {
+        "authentication": "webhook",
+        "content": "={{ $json.formattedAlarm ? $json.formattedAlarm.substring(0, 1900) : '🚨 **KRITISCHER ALARM:** Stufe 3 erkannt, aber der Analyse-Text war fehlerhaft oder leer!' }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.discord",
+      "typeVersion": 2,
+      "position": [
+        1344,
+        560
+      ],
+      "id": "d9996f10-7514-4f23-bc90-3c995a03a51b",
+      "name": "Discord: Kritische Eilmeldung!",
+      "webhookId": "463b4a3e-c3ce-4e45-a520-833b19374eb1",
+      "credentials": {
+        "discordWebhookApi": {
+          "id": "R0a4iAABzbunhY9E",
+          "name": "Discord Webhook account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "3788dfbd-5414-498f-ac54-b7250c190056",
+              "leftValue": "={{ $(\"KI-Marktanalyst\").all() }}.toString()",
+              "rightValue": "\"dringlichkeit\": 3",
+              "operator": {
+                "type": "string",
+                "operation": "notContains"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.3,
+      "position": [
+        624,
+        -48
+      ],
+      "id": "c8f7020f-812c-4111-9c85-db826cdbea7b",
+      "name": "filtert Kritische Meldungen raus"
+    },
+    {
+      "parameters": {
+        "jsCode": "let finalReport = \"🚀 **WÖCHENTLICHER KI-MARKT-REPORT** 🚀\\n\";\nfinalReport += \"=========================================\\n\\n\";\n\n// Holt alle Elemente, die den Filter erfolgreich überstanden haben\nconst items = $input.all();\n\nfor (const item of items) {\n  try {\n    // Schutzschild: Falls Gemini mal keine Daten geliefert hat\n    if (!item.json.content || !item.json.content.parts) {\n      continue; \n    }\n\n    let rawText = item.json.content.parts[0].text;\n\n    if (rawText.includes(\"```json\")) {\n      rawText = rawText.split(\"```json\")[1].split(\"```\")[0].trim();\n    } else if (rawText.includes(\"```\")) {\n      rawText = rawText.split(\"```\")[1].split(\"```\")[0].trim();\n    }\n\n    const data = JSON.parse(rawText);\n    \n    finalReport += `🏢 **FIRMA: ${data.firma.toUpperCase()}**\\n`;\n    finalReport += \"-----------------------------------------\\n\";\n    \n    for (const insight of data.insights) {\n      let emoji = \"📌\";\n      if (insight.dringlichkeit === 2) emoji = \"⚠️ [WICHTIG]\";\n\n      finalReport += `${emoji} **${insight.titel}**\\n`;\n      finalReport += `💡 ${insight.beschreibung}\\n\\n`;\n    }\n    finalReport += \"\\n\";\n  } catch (e) {\n    // Fehlerhafte Durchläufe ignorieren\n  }\n}\n\nreturn [{ json: { formattedReport: finalReport } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        832,
+        -16
+      ],
+      "id": "5be32ec0-3240-48ba-9715-84e15fbd2fc6",
+      "name": "Gesamtbericht zusammenbauen"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1mZygMb32MPg-X08nG_R6ge3mqABCO070LNwl8MTGRdk",
+          "mode": "list",
+          "cachedResultName": "KI Marktbeobachtung Archiv",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1mZygMb32MPg-X08nG_R6ge3mqABCO070LNwl8MTGRdk/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Tabellenblatt1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1mZygMb32MPg-X08nG_R6ge3mqABCO070LNwl8MTGRdk/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Datum": "={{ $now.format('yyyy-MM-dd HH:mm') }}",
+            "Markt Report": "={{ $json.formattedReport }}"
+          },
+          "matchingColumns": [
+            "Datum"
+          ],
+          "schema": [
+            {
+              "id": "Datum",
+              "displayName": "Datum",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Markt Report",
+              "displayName": "Markt Report",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1232,
+        -304
+      ],
+      "id": "f20c7f3c-dbcf-4038-876a-57a8374fd8fa",
+      "name": "Report im Archiv loggen",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "Tsfnu2TfltAZAw5u",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "webhook",
+        "content": "=:rocket: **Wöchentlicher Markt-Report der Tech-Giganten** :rocket:\nHier sind die neuesten Analysen unserer KI:\n{{ $json.formattedReport.substring(0, 1900) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.discord",
+      "typeVersion": 2,
+      "position": [
+        1280,
+        -16
+      ],
+      "id": "ad988315-e432-47d1-afb2-83c81e992046",
+      "name": "Discord: Wochenbericht senden",
+      "webhookId": "b60e28e4-5156-41ab-8774-0a409a3d5ca6",
+      "credentials": {
+        "discordWebhookApi": {
+          "id": "S3GuUYIXsygX26Kr",
+          "name": "Discord Webhook account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Wöchentlicher Trigger": {
+      "main": [
+        [
+          {
+            "node": "RSS-Quellen definieren",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RSS-Quellen definieren": {
+      "main": [
+        [
+          {
+            "node": "Konkurrenz-Schleife",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Konkurrenz-Schleife": {
+      "main": [
+        [
+          {
+            "node": "filtert Kritische Meldungen raus",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Website-Inhalt laden",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Website-Inhalt laden": {
+      "main": [
+        [
+          {
+            "node": "KI-Marktanalyst",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "KI-Marktanalyst": {
+      "main": [
+        [
+          {
+            "node": "Bedrohungs-Check (Stufe 1-3)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Bedrohungs-Check (Stufe 1-3)": {
+      "main": [
+        [
+          {
+            "node": "Alarm-Text formatieren",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Konkurrenz-Schleife",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Alarm-Text formatieren": {
+      "main": [
+        [
+          {
+            "node": "Discord: Kritische Eilmeldung!",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Report im Archiv loggen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Discord: Kritische Eilmeldung!": {
+      "main": [
+        [
+          {
+            "node": "Konkurrenz-Schleife",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "filtert Kritische Meldungen raus": {
+      "main": [
+        [
+          {
+            "node": "Gesamtbericht zusammenbauen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gesamtbericht zusammenbauen": {
+      "main": [
+        [
+          {
+            "node": "Report im Archiv loggen",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Discord: Wochenbericht senden",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Report im Archiv loggen": {
+      "main": [
+        []
+      ]
+    },
+    "Discord: Wochenbericht senden": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "377f4e72-d7f3-40bf-83c1-3f3cec39fa0a",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "0b00f10780335677c21ea272cc8dcbd2fb34129cfb68c66d8f9681f47d3a2f4a"
+  },
+  "nodeGroups": [],
+  "id": "n2RU30iBOQ4ni3mE",
+  "tags": []
+}

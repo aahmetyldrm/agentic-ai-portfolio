@@ -1,0 +1,428 @@
+{
+  "name": "Abrechnung",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "months"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        0
+      ],
+      "id": "e6b03ba8-11b0-4ab6-95a6-fe2dd60c0794",
+      "name": "Monatlicher Trigger"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "3f815501-a84c-4dc8-a9f1-4bae33781fcb",
+              "leftValue": "={{ $json.Status }}",
+              "rightValue": "Offen",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.3,
+      "position": [
+        416,
+        0
+      ],
+      "id": "3351795b-4280-4805-8a30-3fbbb17293f7",
+      "name": "Nur Status 'Offen' filtern"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "19s3-eY35zSWZziGZY_gvVuxnsakDP6pJqG8IRfc-dsU",
+          "mode": "list",
+          "cachedResultName": "Unternehmensdaten_Abrechnung",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/19s3-eY35zSWZziGZY_gvVuxnsakDP6pJqG8IRfc-dsU/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Zeiteinträge",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/19s3-eY35zSWZziGZY_gvVuxnsakDP6pJqG8IRfc-dsU/edit#gid=0"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        208,
+        0
+      ],
+      "id": "f5fbb053-d783-4a0a-ba02-65b77115b6b6",
+      "name": "Kundendaten laden",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "Tsfnu2TfltAZAw5u",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const projects = {};\n\n// 1. Alle offenen Einträge durchgehen und nach Projekt zusammenfassen\nfor (const item of $input.all()) {\n  const data = item.json;\n  const name = data.Projektname;\n  const stunden = parseFloat(data.Stunden) || 0;\n  const satz = parseFloat(data.Stundensatz) || 0;\n  const budget = parseFloat(data.Projektbudget) || 0;\n\n  if (!projects[name]) {\n    projects[name] = {\n      Projektname: name,\n      Gesamtstunden: 0,\n      Stundensatz: satz,\n      Projektbudget: budget,\n      Umsatz: 0\n    };\n  }\n\n  projects[name].Gesamtstunden += stunden;\n}\n\n// 2. Umsatz für jedes Projekt berechnen (Stunden * Satz)\nconst output = Object.values(projects).map(project => {\n  project.Umsatz = project.Gesamtstunden * project.Stundensatz;\n  return { json: project };\n});\n\nreturn output;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        624,
+        0
+      ],
+      "id": "c433e627-a257-4b85-b449-345d39698389",
+      "name": "Stunden & Umsatz berechnen"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.Umsatz }}",
+                    "rightValue": "={{ $json.Projektbudget }}",
+                    "operator": {
+                      "type": "number",
+                      "operation": "gt"
+                    },
+                    "id": "d66656e7-cf90-4afc-9d5d-e8bebb92c227"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "fa67620b-ac78-4d9d-a8c9-406c32661228",
+                    "leftValue": "={{ $json.Umsatz }}",
+                    "rightValue": "={{ $json.Projektbudget }}",
+                    "operator": {
+                      "type": "number",
+                      "operation": "lte"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        832,
+        0
+      ],
+      "id": "05ef2aa4-6753-4abb-b89d-89c161db39ba",
+      "name": "Budget-Prüfung ob überschritten"
+    },
+    {
+      "parameters": {
+        "sendTo": "ahmetyusufyildirim04@gmail.com",
+        "subject": "=🚨 ACHTUNG: Budgetüberschreitung bei Projekt {{ $json.Projektname }}!",
+        "message": "=<p>🚨 <strong>INTERNER BUDGET-ALARM</strong> 🚨</p>  <p>Das Projekt <strong>{{ $json.Projektname }}</strong> hat das vereinbarte Budget überschritten!</p>  <ul>   <li>💰 <strong>Aktueller Umsatz:</strong> {{ $json.Umsatz }} €</li>   <li>📉 <strong>Vereinbartes Budget:</strong> {{ $json.Projektbudget }} €</li>   <li>⚠️ <strong>Überschreitung um:</strong> {{ $json.Umsatz - $json.Projektbudget }} €</li> </ul>  <p>Bitte setze dich umgehend mit dem Projektleiter und dem Kunden in Verbindung, um das weitere Vorgehen oder ein Nachbudget zu besprechen.</p>  <br> <p>Mit freundlichen Grüßen<br> <strong>Dein Finanz-Bot</strong></p>",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1040,
+        -96
+      ],
+      "id": "c161a537-404a-4702-9fcd-64067ab0e158",
+      "name": "Team-Alarm: Budget überschritten!",
+      "webhookId": "292dcb75-8557-4e0b-9b3d-71e72c7a7aed",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "QNIAY6JdmiqIfS5A",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1c29BXcdO13uWyr2EG7yktK6UedaeBEOxMjZ3jaICiK8",
+          "mode": "list",
+          "cachedResultName": "Projekt_Abrechnungen",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1c29BXcdO13uWyr2EG7yktK6UedaeBEOxMjZ3jaICiK8/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Tabellenblatt1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1c29BXcdO13uWyr2EG7yktK6UedaeBEOxMjZ3jaICiK8/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Projektname": "={{ $json.Projektname }}",
+            "Gesamtstunden": "={{ $json.Gesamtstunden }}",
+            "Umsatz": "={{ $json.Umsatz }}",
+            "Budget": "={{ $json.Projektbudget }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Projektname",
+              "displayName": "Projektname",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Gesamtstunden",
+              "displayName": "Gesamtstunden",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Umsatz",
+              "displayName": "Umsatz",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Budget",
+              "displayName": "Budget",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1040,
+        96
+      ],
+      "id": "cd7d6bda-9fa8-4d8c-b2be-2f7b70f37419",
+      "name": "Rechnungsdaten in Tabelle loggen",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "Tsfnu2TfltAZAw5u",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-2.5-flash",
+          "mode": "list",
+          "cachedResultName": "models/gemini-2.5-flash"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=Du bist ein automatisierter Finanz-Assistent. Schreibe ein hochprofessionelles, freundliches E-Mail-Anschreiben für eine Projektabrechnung als HTML-formatierten Text.\n\nProjektdetails:\n\nProjektname: {{ $json.Projektname }}\n\nGesamtbetrag: {{ $json.Umsatz }} €\n\nGesamtstunden: {{ $json.Gesamtstunden }} Std.\n\nWICHTIGE HTML-FORMATIERUNGS-REGELN:\n\nNutze nach der Anrede und nach jedem Absatz zwingend zwei <br>-Tags (also <br><br>) für saubere Abstände.\n\nSchreibe KEINE Betreffzeile. Starte direkt mit \"Sehr geehrte Damen und Herren,<br><br>\".\n\nErwähne im Text, dass die wichtigsten Projektdetails (Stunden und Betrag) direkt unten aufgeführt sind.\n\nFüge KEINE Platzhalter wie \"[Link einfügen]\" oder \"[Ihr Name]\" ein. Beende die E-Mail nach den Grußformeln direkt mit \"Mit freundlichen Grüßen,<br><br><strong>Ihr Finanz-Team</strong>\".\n\nAntworte AUSSCHLIESSLICH mit dem fertigen HTML-Code des Textes, ohne zusätzliche Kommentare oder ```html Code-Blöcke."
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.2,
+      "position": [
+        1296,
+        112
+      ],
+      "id": "22b30f90-8b9f-4b30-9501-c7ecccafd947",
+      "name": "KI-Rechnungsredakteur",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "KxW8ej7fWaquzBjB",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "ahmetyusufyildirim04@gmail.com",
+        "subject": "=[Rechnung] Projektabrechnung {{ $('Budget-Prüfung ob überschritten').item.json.Projektname }}",
+        "message": "={{ $json.content.parts[0].text }}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1680,
+        112
+      ],
+      "id": "4514543c-db37-4733-a114-c99e6a447089",
+      "name": "Rechnungsanschreiben an Kunden",
+      "webhookId": "0eb38c87-841f-45e4-a1e6-f520c2b73de7",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "QNIAY6JdmiqIfS5A",
+          "name": "Gmail account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Monatlicher Trigger": {
+      "main": [
+        [
+          {
+            "node": "Kundendaten laden",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Nur Status 'Offen' filtern": {
+      "main": [
+        [
+          {
+            "node": "Stunden & Umsatz berechnen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Kundendaten laden": {
+      "main": [
+        [
+          {
+            "node": "Nur Status 'Offen' filtern",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Stunden & Umsatz berechnen": {
+      "main": [
+        [
+          {
+            "node": "Budget-Prüfung ob überschritten",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Budget-Prüfung ob überschritten": {
+      "main": [
+        [
+          {
+            "node": "Team-Alarm: Budget überschritten!",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Rechnungsdaten in Tabelle loggen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Rechnungsdaten in Tabelle loggen": {
+      "main": [
+        [
+          {
+            "node": "KI-Rechnungsredakteur",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "KI-Rechnungsredakteur": {
+      "main": [
+        [
+          {
+            "node": "Rechnungsanschreiben an Kunden",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "9eb938a3-7abc-4de9-a69a-508bdcb307e0",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "0b00f10780335677c21ea272cc8dcbd2fb34129cfb68c66d8f9681f47d3a2f4a"
+  },
+  "nodeGroups": [],
+  "id": "LURpZzBscnEoIdcI",
+  "tags": []
+}

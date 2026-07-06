@@ -1,0 +1,381 @@
+{
+  "name": "Newsletter-Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "mode": "markdownToHtml",
+        "markdown": "={{ $json.content.parts[0].text }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.markdown",
+      "typeVersion": 1,
+      "position": [
+        1952,
+        -112
+      ],
+      "id": "15f5a3de-c1d0-47ab-afb6-a7254d837cd9",
+      "name": "Markdown"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 7
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        16,
+        0
+      ],
+      "id": "9ad219d1-9b29-4af7-865f-b478a448087a",
+      "name": "Workflowstart jeden Morgen"
+    },
+    {
+      "parameters": {
+        "jsCode": "return [\n{ \"json\": { \"feed\": \"https://www.wired.com/feed/tag/ai/latest/rss\" } },\n{ \"json\": { \"feed\": \"https://www.technologyreview.com/feed/\" } },\n{ \"json\": { \"feed\": \"https://www.theverge.com/rss/tech/index.xml\" } }\n]"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        208,
+        0
+      ],
+      "id": "eee610d7-1839-461b-a6d8-5f421490ceb4",
+      "name": "RSS-Quellen definieren"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        416,
+        16
+      ],
+      "id": "f4a6dd07-6bb8-4219-8790-68618c0e3090",
+      "name": "Feed-Schleife"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.feed }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1.2,
+      "position": [
+        528,
+        208
+      ],
+      "id": "ceb67b60-7f58-4a7e-b0f0-4179743b47c3",
+      "name": "Feeds auslesen"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "35be3831-542f-4f1d-9fdf-1fa015993c56",
+              "leftValue": "={{ $json.pubDate }}",
+              "rightValue": "={{ $now.minus({ days: 1 }).toISO() }}",
+              "operator": {
+                "type": "dateTime",
+                "operation": "after"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        624,
+        -16
+      ],
+      "id": "e4b0fb04-f87e-4a47-8496-32fe77d319bb",
+      "name": "Nach Datum filtern (Letzte 24h)"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.firecrawl.dev/v2/scrape",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer fc-0c388e1b97484dc99b7626972754a0f4"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"url\": \"{{ $json.link }}\",\n  \"formats\": [\n    \"markdown\"\n  ]\n} ",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        832,
+        -112
+      ],
+      "id": "74cc7f8b-8e3d-417a-8d5f-eb747c19fab7",
+      "name": "Firecrawl Scraper"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-2.5-flash",
+          "mode": "list",
+          "cachedResultName": "models/gemini-2.5-flash"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=Fasse den Artikel in 3 bis 5 Sätzen zusammen.  {{ $json.data.markdown }}"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.2,
+      "position": [
+        1040,
+        -112
+      ],
+      "id": "c42ad2bf-274e-4adf-aeeb-7a058d09217a",
+      "name": "Artikel zusammenfassen",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "KxW8ej7fWaquzBjB",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fieldsToAggregate": {
+          "fieldToAggregate": [
+            {
+              "fieldToAggregate": "content.parts[0].text"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        1392,
+        -112
+      ],
+      "id": "496d7c5a-875d-453d-ab18-ec31e30bc5cf",
+      "name": "Berichte bündeln"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "models/gemini-3-flash-preview"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=Erstelle auf Basis der folgenden Artikelsummaries eine prägnante, journalistisch fundierte Übersicht der aktuellen KI-News.\n1. Beginne mit einem kurzen, einleitenden Absatz (2–3 Sätze), der das Gesamtbild der letzten Tage beschreibt – welche Themen dominieren, welche Entwicklungen fallen auf?\n2. Formuliere anschließend die *Top 3 wichtigsten Erkenntnisse oder Trends* in klaren Stichpunkten (je 1–2 Sätze).\n3. Gib danach eine strukturierte Übersicht der übrigen Themen – gruppiert nach Relevanz oder thematischer Nähe.\n4. Schließe mit einem *„Hype-Barometer“* ab:\nBewerte die allgemeine Stimmung in der KI-Welt auf einer Skala von *–100 (Ernüchterung, Skepsis)* bis **+100 (Überhype, überzogene Erwartungen)**.\nGib dazu eine passende verbale Bezeichnung, z. B. „realistischer Fortschritt“, „vorsichtiger Optimismus“ oder „übertriebener Hype“.\n5. Beende den Bericht mit 1–2 Sätzen, die zusammenfassen, was diese Woche besonders bemerkenswert war oder wohin sich der Trend bewegt.\nSchreibe sachlich, analytisch und präzise – kein Marketingstil, keine Floskeln.\nHier sind die Artikelsummaries:\n{{ $json.text }}"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.2,
+      "position": [
+        1600,
+        -112
+      ],
+      "id": "d49af856-b07f-4c68-bbe8-77b53742b4d5",
+      "name": "KI-Redakteur (HTML-Report)",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "KxW8ej7fWaquzBjB",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "ahmetyusufyildirim04@gmail.com",
+        "subject": "Daily AI Update",
+        "message": "={{ $json.data }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        2160,
+        -112
+      ],
+      "id": "dfa01a81-bb64-4658-825e-3fc2eafe0bfa",
+      "name": "Newsletter per Mail senden",
+      "webhookId": "12d3c39d-177e-4769-9cb3-d44e4c817c31",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "QNIAY6JdmiqIfS5A",
+          "name": "Gmail account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Markdown": {
+      "main": [
+        [
+          {
+            "node": "Newsletter per Mail senden",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Workflowstart jeden Morgen": {
+      "main": [
+        [
+          {
+            "node": "RSS-Quellen definieren",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RSS-Quellen definieren": {
+      "main": [
+        [
+          {
+            "node": "Feed-Schleife",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Feed-Schleife": {
+      "main": [
+        [
+          {
+            "node": "Nach Datum filtern (Letzte 24h)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Feeds auslesen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Feeds auslesen": {
+      "main": [
+        [
+          {
+            "node": "Feed-Schleife",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Nach Datum filtern (Letzte 24h)": {
+      "main": [
+        [
+          {
+            "node": "Firecrawl Scraper",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Firecrawl Scraper": {
+      "main": [
+        [
+          {
+            "node": "Artikel zusammenfassen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Artikel zusammenfassen": {
+      "main": [
+        [
+          {
+            "node": "Berichte bündeln",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Berichte bündeln": {
+      "main": [
+        [
+          {
+            "node": "KI-Redakteur (HTML-Report)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "KI-Redakteur (HTML-Report)": {
+      "main": [
+        [
+          {
+            "node": "Markdown",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "d3063625-5b12-4354-8df4-70f920cad2b8",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "0b00f10780335677c21ea272cc8dcbd2fb34129cfb68c66d8f9681f47d3a2f4a"
+  },
+  "nodeGroups": [],
+  "id": "YqnBlUk5ql1iT1n2",
+  "tags": []
+}

@@ -1,0 +1,435 @@
+{
+  "name": "Webformular Filter 2",
+  "nodes": [
+    {
+      "parameters": {
+        "modelName": "models/gemini-flash-latest",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        192,
+        192
+      ],
+      "id": "8634e76c-dd81-450d-a3b0-1c7563ecca52",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "KxW8ej7fWaquzBjB",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1zuT1fgsRdnDZGUMOWE2Fe0q4-zVcJHK-Sm8UNC8HhhY",
+          "mode": "list",
+          "cachedResultName": "n8n_CRM_Leads",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1zuT1fgsRdnDZGUMOWE2Fe0q4-zVcJHK-Sm8UNC8HhhY/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Tabellenblatt1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1zuT1fgsRdnDZGUMOWE2Fe0q4-zVcJHK-Sm8UNC8HhhY/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Datum": "={{ $now.format('dd.MM.yyyy HH:mm') }}",
+            "Firma": "={{ JSON.parse($json.output.replace('```json', '').replace('```', '').trim()).firma }}",
+            "Budget": "={{ JSON.parse($json.output.replace('```json', '').replace('```', '').trim()).budget }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Firma",
+              "displayName": "Firma",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Budget",
+              "displayName": "Budget",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Datum",
+              "displayName": "Datum",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        784,
+        208
+      ],
+      "id": "053b3b7e-2695-409f-908b-98663185f9b5",
+      "name": "Daten in Tabelle eintragen",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "Tsfnu2TfltAZAw5u",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "3450af72-baf7-43b2-897e-adb372a2b778",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "4a7cd4f9-5131-4fda-bef8-a0c09b281782",
+      "name": "Kundenanfrage erhalten",
+      "webhookId": "3450af72-baf7-43b2-897e-adb372a2b778"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Du bist ein präziser Daten-Analyst. Analysiere die folgende Kundenanfrage:\n\n\"{{ $json.body.anfrage_text }}\"\n\nDeine Aufgabe: Extrahiere den Firmennamen und das Budget.\nWICHTIGE REGELN:\n1. Wenn kein Budget oder keine Zahl im Text genannt wird, setze das \"budget\" auf 0.\n2. Extrahiere das Budget ALS REINE ZAHL (ohne \"EUR\", ohne Punkte oder Kommata, z.B. 45000).\n3. Antworte AUSSCHLIESSLICH im folgenden JSON-Format. Schreibe keinen Text davor oder danach!\n\n{\n  \"firma\": \"Name der Firma\",\n  \"budget\": 45000\n}",
+        "hasOutputParser": true,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        496,
+        0
+      ],
+      "id": "8be66fa2-9040-4809-a4e5-bb689a455d76",
+      "name": "Daten extrahieren aus der Anfrage"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.Budget }}",
+                    "rightValue": 0,
+                    "operator": {
+                      "type": "number",
+                      "operation": "equals"
+                    },
+                    "id": "a11ff9ad-b174-4676-8d15-aaf6d81a49e5"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "9bc13e65-b634-4533-adca-c74f74f0de20",
+                    "leftValue": "={{ $json.Budget }}",
+                    "rightValue": 10000,
+                    "operator": {
+                      "type": "number",
+                      "operation": "gt"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "cf56c894-c459-4e35-b3c8-4c1860550123",
+                    "leftValue": "={{ $json.Budget }}",
+                    "rightValue": 10000,
+                    "operator": {
+                      "type": "number",
+                      "operation": "lte"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        992,
+        208
+      ],
+      "id": "ff358f64-8c4b-4d6d-bcd0-ed2a5677da94",
+      "name": "Kunden nach Groß, klein sortieren"
+    },
+    {
+      "parameters": {
+        "sendTo": "ahmetyusufyildirim04@gmail.com",
+        "subject": "=Rückfrage zu Ihrer Anfrage: {{ $json.Firma }}",
+        "message": "<p>Hallo,</p>  <p>vielen Dank für Ihre Anfrage!</p>  <p>Um Ihr Projekt besser einschätzen zu können, eine kurze Frage: In welchem preislichen Rahmen (Budget) bewegt sich das Projekt in etwa?</p>  <br> <p>Mit freundlichen Grüßen<br> <strong>Ihr Team</strong></p>",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1216,
+        32
+      ],
+      "id": "3ba7430e-8fc0-4e27-ac9b-c563543dfc79",
+      "name": "Mail: Budget-Rückfrage (Kein Budget)",
+      "webhookId": "e9d0f392-f225-4cb2-b5e7-4c464dfca549",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "QNIAY6JdmiqIfS5A",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "ahmetyusufyildirim04@gmail.com",
+        "subject": "=Bestätigung Ihrer Anfrage: {{ $json.Firma }}",
+        "message": "=<p>Vielen Dank für Ihre Anfrage.</p>\n\n<p>Wir haben Ihre Daten (Budget: <strong>{{ $json.Budget }} €</strong>) erfolgreich erhalten und prüfen diese intern.</p>\n\n<p>Wir melden uns in den nächsten Tagen bei Ihnen.</p>\n\n<br>\n<p>Mit freundlichen Grüßen<br>\n<strong>Ihr Team</strong></p>",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1232,
+        352
+      ],
+      "id": "5d8359ec-c8e4-44a0-a98d-576f5901d299",
+      "name": "Mail: Bestätigung an Standardkunden",
+      "webhookId": "5447266f-9ee3-484e-84f8-e5a1cd18a290",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "QNIAY6JdmiqIfS5A",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "ahmetyusufyildirim04@gmail.com",
+        "subject": "=Projektanfrage {{ $json.Firma }} / Ihr persönlicher Ansprechpartner",
+        "message": "=<p>Sehr geehrte Damen und Herren,</p>\n<p>Sehr geehrtes Team der <strong>{{ $json.Firma }}</strong>,</p>\n\n<p>vielen Dank für Ihre Projektanfrage und das Vertrauen, das Sie uns entgegenbringen.</p>\n\n<p>Aufgrund des Umfangs und der strategischen Bedeutung Ihres geplanten Projekts haben wir Ihre Anfrage intern sofort an unsere Geschäftsleitung und unsere Senior-Consultants weitergeleitet.</p>\n\n<p>Ein persönlicher Ansprechpartner aus unserem Experten-Team bereitet sich bereits auf Ihre Anforderungen vor und wird sich <strong>innerhalb der nächsten 24 Stunden</strong> telefonisch oder per E-Mail direkt bei Ihnen melden, um ein exklusives Erstgespräch zu vereinbaren.</p>\n\n<p>Wir freuen uns auf die Zusammenarbeit und darauf, Ihr Projekt gemeinsam erfolgreich umzusetzen.</p>\n\n<br>\n<p>Mit freundlichen Grüßen,<br>\n<strong>Ihr Team</strong></p>",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1376,
+        96
+      ],
+      "id": "d86e5eb7-e4f3-457d-ab15-da9ecc38ce5c",
+      "name": "Mail: Bestätigung an Großkunden",
+      "webhookId": "dcecb9a7-b9df-49a8-a4a7-bca73d9fc507",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "QNIAY6JdmiqIfS5A",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "ahmetyusufyildirim04@gmail.com",
+        "subject": "Neuer Großkunde",
+        "message": "=<p>🚀 <strong>NEUER GROSSKUNDE IM SYSTEM!</strong> 🚀</p>\n\n<p>Das Unternehmen <strong>{{ $json.Firma }}</strong> hat angefragt.</p>\n\n<p>• 💰 <strong>Budget:</strong> {{ $json.Budget }} €<br>\n• 📅 <strong>Datum:</strong> {{ $json.Datum }}</p>\n\n<p>Der Lead wurde automatisch im Google Sheet protokolliert. Bitte schnellstmöglich bearbeiten!</p>",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1360,
+        240
+      ],
+      "id": "ff193721-b998-4e14-b47d-a8ad541b6515",
+      "name": "Team-Alarm: Neuer Großkunde",
+      "webhookId": "2fe094dc-220f-45b7-91f6-48861088d651",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "QNIAY6JdmiqIfS5A",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sendTo": "ahmetyusufyildirim04@gmail.com",
+        "subject": "=Standard-Anfrage:{{ $json.Firma }}",
+        "message": "=Anfrage von {{ $json.Firma }} erhalten (Budget: {{ $json.Budget }}€). Standard-Prozess eingeleitet.",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1232,
+        496
+      ],
+      "id": "35439ea5-e511-4f74-8581-792d8b50ae49",
+      "name": "Team-Info: Standard-Lead",
+      "webhookId": "e9558914-ce4b-49f2-bb8d-1bb9231457f6",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "QNIAY6JdmiqIfS5A",
+          "name": "Gmail account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Daten extrahieren aus der Anfrage",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Daten in Tabelle eintragen": {
+      "main": [
+        [
+          {
+            "node": "Kunden nach Groß, klein sortieren",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Kundenanfrage erhalten": {
+      "main": [
+        [
+          {
+            "node": "Daten extrahieren aus der Anfrage",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Daten extrahieren aus der Anfrage": {
+      "main": [
+        [
+          {
+            "node": "Daten in Tabelle eintragen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Kunden nach Groß, klein sortieren": {
+      "main": [
+        [
+          {
+            "node": "Mail: Budget-Rückfrage (Kein Budget)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mail: Bestätigung an Großkunden",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Team-Alarm: Neuer Großkunde",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Mail: Bestätigung an Standardkunden",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Team-Info: Standard-Lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mail: Bestätigung an Standardkunden": {
+      "main": [
+        []
+      ]
+    },
+    "Mail: Bestätigung an Großkunden": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "8c3ad11e-b839-482c-8219-ee593ea585ba",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "0b00f10780335677c21ea272cc8dcbd2fb34129cfb68c66d8f9681f47d3a2f4a"
+  },
+  "nodeGroups": [],
+  "id": "3uwT5qKHZLIyjDA9",
+  "tags": []
+}
